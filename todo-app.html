@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My To-Do App</title>
+
+    <!-- made by uzair iqbal - this is my 3rd project!! -->
+
+    <style>
+        /* reset kiya maine basic */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #f0f2f5;
+            font-family: Arial, sans-serif;
+            /* center karna tha page ko */
+            display: flex;
+            justify-content: center;
+            padding-top: 50px;
+        }
+
+        .container {
+            background: white;
+            width: 480px;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 26px;
+        }
+
+        /* chota credit wala text */
+        .credit {
+            text-align: center;
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 25px;
+        }
+
+        /* input area */
+        .input-area {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .input-area input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 15px;
+            outline: none;
+        }
+
+        /* jab input pe click karo toh color change ho */
+        .input-area input:focus {
+            border-color: #6c63ff;
+        }
+
+        .input-area button {
+            background-color: #6c63ff;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .input-area button:hover {
+            background-color: #574fd6;
+        }
+
+        /* filter buttons - all, active, completed */
+        .filters {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 18px;
+        }
+
+        .filters button {
+            flex: 1;
+            padding: 8px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #555;
+        }
+
+        /* jo selected filter hai uska style */
+        .filters button.active-filter {
+            border-color: #6c63ff;
+            color: #6c63ff;
+            font-weight: bold;
+        }
+
+        /* task list */
+        #task-list {
+            list-style: none;
+        }
+
+        /* ek task ka style */
+        .task-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 10px;
+            border-bottom: 1px solid #f0f0f0;
+            gap: 10px;
+        }
+
+        .task-item:last-child {
+            border-bottom: none;
+        }
+
+        /* checkbox */
+        .task-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #6c63ff;
+        }
+
+        /* task ka text */
+        .task-text {
+            flex: 1;
+            font-size: 15px;
+            color: #333;
+        }
+
+        /* completed task pe line */
+        .task-text.done {
+            text-decoration: line-through;
+            color: #aaa;
+        }
+
+        /* delete button */
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #ccc;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 2px 6px;
+        }
+
+        .delete-btn:hover {
+            color: #ff4d4d;
+        }
+
+        /* jab koi task nahi hoti */
+        .empty-msg {
+            text-align: center;
+            color: #bbb;
+            padding: 30px 0;
+            font-size: 14px;
+        }
+
+        /* neeche kitni tasks baaki hain */
+        .footer-info {
+            margin-top: 15px;
+            text-align: right;
+            font-size: 12px;
+            color: #bbb;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📝 My To-Do List</h1>
+    <p class="credit">by Uzair Iqbal</p>
+
+    <!-- task likhne ka area -->
+    <div class="input-area">
+        <input type="text" id="task-input" placeholder="Type your today's to-do list here...
+" />
+        <button onclick="addTask()">+</button>
+    </div>
+
+    <!-- filter buttons -->
+    <div class="filters">
+        <button class="active-filter" onclick="setFilter('all', this)">All</button>
+        <button onclick="setFilter('active', this)">Active</button>
+        <button onclick="setFilter('completed', this)">Completed</button>
+    </div>
+
+    <!-- yahan tasks show hongi -->
+    <ul id="task-list"></ul>
+
+    <p class="footer-info" id="footer-info"></p>
+</div>
+
+<script>
+
+    // current filter store karne ke liye
+    var currentFilter = 'all';
+
+    // tasks ka array - yahan sab data rahega
+    var tasks = [];
+
+    // page load hone pe local storage se tasks lo
+    function loadTasks() {
+        var saved = localStorage.getItem('uzair-tasks');
+        if (saved) {
+            tasks = JSON.parse(saved);
+        }
+        renderTasks();
+    }
+
+    // local storage mein save karo
+    function saveTasks() {
+        localStorage.setItem('uzair-tasks', JSON.stringify(tasks));
+    }
+
+    // nayi task add karna
+    function addTask() {
+        var input = document.getElementById('task-input');
+        var text = input.value.trim();
+
+        // agar kuch likha nahi toh kuch mat karo
+        if (text == '') {
+            alert('Aj kio tuh kam ho ga bhai!');
+            return;
+        }
+
+        // naya task object banaya
+        var newTask = {
+            id: Date.now(), // unique id ke liye time use kiya
+            text: text,
+            completed: false
+        };
+
+        tasks.push(newTask);
+        saveTasks();
+        renderTasks();
+
+        // input clear karo
+        input.value = '';
+        input.focus();
+    }
+
+    // enter press karne pe bhi task add ho
+    document.getElementById('task-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            addTask();
+        }
+    });
+
+    // task complete/incomplete toggle karna
+    function toggleTask(id) {
+        // tasks mein se wo task dhundho jiska id match kare
+        for (var i = 0; i < tasks.length; i++) {
+            if (tasks[i].id == id) {
+                tasks[i].completed = !tasks[i].completed;
+                break;
+            }
+        }
+        saveTasks();
+        renderTasks();
+    }
+
+    // task delete karna
+    function deleteTask(id) {
+        // filter se us task ko hata do
+        tasks = tasks.filter(function(t) {
+            return t.id != id;
+        });
+        saveTasks();
+        renderTasks();
+    }
+
+    // filter change karna
+    function setFilter(filter, btn) {
+        currentFilter = filter;
+
+        // pehle sab buttons se active class hata do
+        var btns = document.querySelectorAll('.filters button');
+        btns.forEach(function(b) {
+            b.classList.remove('active-filter');
+        });
+
+        // sirf is button pe lagao
+        btn.classList.add('active-filter');
+
+        renderTasks();
+    }
+
+    // tasks screen pe show karna
+    function renderTasks() {
+        var list = document.getElementById('task-list');
+        list.innerHTML = ''; // pehle clear karo
+
+        // filter ke hisaab se tasks filter karo
+        var filtered = tasks.filter(function(t) {
+            if (currentFilter === 'active') return !t.completed;
+            if (currentFilter === 'completed') return t.completed;
+            return true; // all ke liye sab dikhao
+        });
+
+        // agar koi task nahi toh message dikhao
+        if (filtered.length === 0) {
+            list.innerHTML = '<p class="empty-msg">Koi task nhi raha! 🙈</p>';
+        }
+
+        // har task ke liye li element banao
+        filtered.forEach(function(task) {
+            var li = document.createElement('li');
+            li.className = 'task-item';
+
+            // checkbox
+            var checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = task.completed;
+            checkbox.onchange = function() {
+                toggleTask(task.id);
+            };
+
+            // task text
+            var span = document.createElement('span');
+            span.className = 'task-text' + (task.completed ? ' done' : '');
+            span.innerText = task.text;
+
+            // delete button
+            var delBtn = document.createElement('button');
+            delBtn.className = 'delete-btn';
+            delBtn.innerHTML = '🗑️';
+            delBtn.onclick = function() {
+                deleteTask(task.id);
+            };
+
+            li.appendChild(checkbox);
+            li.appendChild(span);
+            li.appendChild(delBtn);
+            list.appendChild(li);
+        });
+
+        // footer mein baaki tasks ka count
+        var remaining = tasks.filter(function(t) { return !t.completed; }).length;
+        document.getElementById('footer-info').innerText = remaining + ' task(s) baaki hain';
+    }
+
+    // page load pe call karo
+    loadTasks();
+
+</script>
+
+</body>
+</html>
